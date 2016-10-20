@@ -50,8 +50,16 @@ final class Sapi
      */
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response, callable $next)
     {
-
-        if (!in_array(php_sapi_name(), $this->serverWhiteList)) {
+		$allowed = false;
+		if (in_array(php_sapi_name(), $this->serverWhiteList)) {
+			$allowed = true;
+		}
+        elseif (in_array('cli', $this->serverWhiteList)) {
+        	if ($this->isCli() === true) {
+        		$allowed = true;
+        	}
+        }
+        if ($allowed === false) {
             $response = $response->withStatus(403);
             if (!is_null($this->notFoundResponse)) {
                 $response = $this->notFoundResponse;
@@ -61,5 +69,20 @@ final class Sapi
         }
 
         return $next($request, $response);
+    }
+    
+    private static function isCli()
+    {
+	    if (PHP_SAPI == 'cli') {
+	    	return true;
+	    }
+	    if(defined('STDIN')) {
+	        return true;
+	    }
+	     
+	    if( empty($_SERVER['REMOTE_ADDR']) && !isset($_SERVER['HTTP_USER_AGENT']) && count($_SERVER['argv']) > 0) {
+	        return true;
+	    }
+	    return false;
     }
 }
